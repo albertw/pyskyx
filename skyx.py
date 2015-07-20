@@ -60,7 +60,8 @@ class SkyXConnection(object):
             sockobj.close()
             return oput.split("|")[0]
         except error as msg:
-            raise SkyxConnectionError(msg)
+            raise SkyxConnectionError("Connection to " + self.host + ":" + \
+                                      str(self.port) + " failed. :" + str(msg))
 
     def find(self, target):
         ''' Find a target
