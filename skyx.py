@@ -67,12 +67,12 @@ class SkyXConnection(object):
         ''' Find a target
             target can be a defined object or a decimal ra,dec
         '''
-        op = self._send('sky6StarChart.Find("' + target + '")')
-        if op == "undefined":
+        output = self._send('sky6StarChart.Find("' + target + '")')
+        if output == "undefined":
             return True
         else:
             raise SkyxObjectNotFoundError(target)
-        
+
     def closedloopslew(self, target):
         ''' Perform a lcosed loop slew.
             Slew, take image, solve, slew, take image, confirm.
@@ -96,6 +96,7 @@ class SkyXConnection(object):
     def takeimages(self, exposure, nimages):
         ''' Take a given number of images of a specified exposure.
         '''
+        # TODO
         command = """
         var Imager = ccdsoftCamera;
         function TakeOnePhoto()
@@ -116,14 +117,9 @@ class SkyXConnection(object):
 
         Main();
         """
-        # TODO
-        oput = self._send(command)
-        for line in oput.splitlines():
-            pass
-        pass
 
     def TheSkyXAction(self, action):
-        ''' The TheSkyXAction object allows a script to invoke a subset of 
+        ''' The TheSkyXAction object allows a script to invoke a subset of
             commands listed under Preferences, Toolbars, Customize.
         '''
         command = "TheSkyXAction.execute(\"" + action + "\")"
@@ -132,9 +128,9 @@ class SkyXConnection(object):
             return True
         else:
             raise SkyxObjectNotFoundError(oput)
-        
+
     def Sk6ObjectInformationProperty(self, prop):
-        ''' Returns a value for the desired Sk6ObjectInformationProperty 
+        ''' Returns a value for the desired Sk6ObjectInformationProperty
             argument.
         '''
         command = """
@@ -143,14 +139,14 @@ class SkyXConnection(object):
                 Out = String(sky6ObjectInformation.ObjInfoPropOut);"""
         oput = self._send(command)
         return oput
-    
+
     def Sk6ObjectInformationPropertyApplies(self, prop):
         pass
 
     def Sk6ObjectInformationPropertyName(self, prop):
         pass
 
-        
+
     def sky6ObjectInformation(self, target):
         ''' Method to return basic SkyX position information on a target.
         '''
@@ -203,35 +199,3 @@ class SkyXConnection(object):
                 val = line.split(":")[1]
                 results[info] = val
         return results
-
-    def test1(self):
-        ''' basic test
-        '''
-        command = """
-/* Java Script */
-var Out;
-var PropCnt = 189;
-var p;
-
-Out="";
-sky6StarChart.Find("Saturn");
-
-for (p=0;p<PropCnt;++p)
-{
-   if (sky6ObjectInformation.PropertyApplies(p) != 0)
-    {
-        /*Latch the property into ObjInfoPropOut*/
-      sky6ObjectInformation.Property(p)
-
-        /*Append into s*/
-      Out += sky6ObjectInformation.ObjInfoPropOut + "|"
-
-        //print(p);
-   }
-}"""
-        print (self._send(command))
-
-
-if __name__ == "__main__":
-    xconn = SkyXConnection()
-    print(xconn.sky6ObjectInformation("Saturn"))
