@@ -36,4 +36,35 @@ def test_TheSkyXAction(skyxconn):
     ''' Test TheSkyXAction
     '''
     assert skyxconn.TheSkyXAction("MOVE_UP") == True
+    
+def test_cameraConnect(skyxconn):
+    ''' Test ccdsoftCameraConnect
+    '''
+    assert skyxconn.ccdsoftCameraConnect() == True
 
+def test_cameraDisconnect(skyxconn):
+    ''' Test ccdsoftCameraDisconnect
+    '''
+    assert skyxconn.ccdsoftCameraDisconnect() == True
+    
+def test_scopeConnect(skyxconn):
+    ''' Test sky6RASCOMTeleConnect
+    '''
+    assert skyxconn.sky6RASCOMTeleConnect() == True
+    
+def test_scopeDisconnect(skyxconn):
+    ''' Test sky6RASCOMTeleDisconnect
+        This seems to be an expected fail as the telescope does not 
+        disconnect. Need to look into this
+    '''
+    assert skyxconn.sky6RASCOMTeleDisconnect() == True
+    
+def test_closedloopslew(skyxconn):
+    ''' Test a closed loop slew
+        This needs the camera, telescope and image link set up correctly
+            hence it will usually fail...
+    '''
+    skyxconn.ccdsoftCameraConnect()
+    skyxconn.sky6RASCOMTeleConnect()
+    assert skyxconn.closedloopslew("M81") == True
+    

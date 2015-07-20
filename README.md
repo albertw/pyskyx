@@ -7,19 +7,20 @@ java scripts.
   
 ## Status
 
-Done (for now - see whats implemented in the code):
+Done (for now see whats implemented in the code):
 * TCP connection and sending of arbitrary commands.
 * Find command
 * TheSkyXAction & basic sky6ObjectInformation
 
+Untested:
+* closed loop slew
+* connect/disconnect scope
+* connect/disconnect camera
+
 TODO:
 * All telescope slewing
 * All camera etc. settings
-* All image capture including closed loop slew
-
-May Dos:
-* ObjectInformation if there are multiple objects.
-* Any other Classes listed at http://www.bisque.com/scripttheskyx/annotated.html
+* All image capture
 
 ## Usage
 ```

@@ -34,6 +34,18 @@ class SkyxConnectionError(Exception):
         ''' returns the error string '''
         return repr(self.value)
 
+class SkyxTypeError(Exception):
+    ''' Exception for Failures to Connect to SkyX
+    '''
+    def __init__(self, value):
+        ''' init'''
+        super(SkyxTypeError, self).__init__(value)
+        self.value = value
+
+    def __str__(self):
+        ''' returns the error string '''
+        return repr(self.value)
+    
 
 class SkyXConnection(object):
     ''' Class to handle connections to TheSkyX
@@ -73,24 +85,84 @@ class SkyXConnection(object):
         else:
             raise SkyxObjectNotFoundError(target)
 
-    def closedloopslew(self, target):
-        ''' Perform a lcosed loop slew.
-            Slew, take image, solve, slew, take image, confirm.
+    def sky6RASCOMTeleConnect(self):
+        ''' Connect to the telescope
         '''
-        # 0 on success
-        self.find(target)
+        command = """
+                  var Out;
+                  sky6RASCOMTele.Connect();
+                  Out = sky6RASCOMTele.IsConnected"""
+        output = self._send(command).splitlines()
+        if int(output[0]) != 1:
+            raise SkyxTypeError("Telescope not connected. "+\
+                                "sky6RASCOMTele.IsConnected=" + output[0])
+        return True
+        
+    def sky6RASCOMTeleDisconnect(self):
+        ''' Disconnect the telescope
+            Whatever this actually does...
+        '''
+        command = """
+                  var Out;
+                  sky6RASCOMTele.Disconnect();
+                  Out = sky6RASCOMTele.IsConnected"""
+        output = self._send(command).splitlines()
+        if int(output[0]) != 0:
+            raise SkyxTypeError("Telescope still connected. " +\
+                                "sky6RASCOMTele.IsConnected=" + output[0])
+        return True
+                
+    def ccdsoftCameraConnect(self, async=0):
+        ''' Connect to the camera defined in the TheSkyX profile
+      
+            Returns True on success or throws a SkyxTypeError
+        '''
+        command = """
+                    var Imager = ccdsoftCamera;
+                    var Out = "";
+                    Imager.Connect();
+                    Imager.Asynchronous = """ + str(async) + """;
+                    Out = Imager.Status;
+                    """
+        output = self._send(command).splitlines()
+        if "Ready" not in output[0]:
+            raise SkyxTypeError(output[0])
+        return True
+
+    def ccdsoftCameraDisconnect(self):
+        ''' Disconnect the camera
+        
+            Returns True on success or throws a SkyxTypeError
+        '''
+        command = """
+                    var Imager = ccdsoftCamera;
+                    var Out = "";
+                    Imager.Disconnect();
+                    Out = Imager.Status;
+                  """
+        output = self._send(command).splitlines()
+        if "Not Connected" not in output[0]:
+            raise SkyxTypeError(output[0])
+        return True
+                                    
+    def closedloopslew(self, target=None):
+        ''' Perform a closed loop slew.
+            UNTESTED
+        '''
+        if target != None:
+            self.find(target)
         command = '''
+            var nErr=0;
+            ccdsoftCamera.Connect();
+            ccdsoftCamera.AutoSaveOn = 1;
             ClosedLoopSlew.exec();
+            nErr = ClosedLoopSlew.exec();
             '''
         oput = self._send(command)
         for line in oput.splitlines():
-            if line == "0":
-                return True
-            if "5005" in line:
-                raise SkyxObjectNotFoundError("Object not found.")
-            if "Receive time-out" in line:
-                raise SkyxObjectNotFoundError("Time out getting image.")
-        # God knows if we are here...
+            print(line)
+            if "Error" in line:
+                raise SkyxTypeError(line)
         return True
 
     def takeimages(self, exposure, nimages):
