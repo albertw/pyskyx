@@ -4,6 +4,8 @@ python module to help interfacing with SoftwareBisque's TheSkyX
 
 This module utilises the TCP server built into TheSkyX which can be sent
 java scripts. 
+
+This is a work in progress. Assume all functions/classes/interfaces as very unstable and liable to change on a whim for now!
   
 ## Status
 
