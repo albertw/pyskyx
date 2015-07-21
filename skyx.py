@@ -1,4 +1,8 @@
-''' Method to handle connections to TheSkyX
+''' Module to handle connections to TheSkyX
+
+The classes are defined to match the classes in Script TheSkyX. This isn't
+really necessary as they all just send the javascript to TheSkyX via
+SkyXConnection._send().
 '''
 from __future__ import print_function
 
@@ -7,6 +11,19 @@ from socket import socket, AF_INET, SOCK_STREAM, SHUT_RDWR, error
 
 
 logger = logging.getLogger(__name__)
+
+class Singleton(object):
+    ''' Singleton class so we dont have to keep specifing host and port'''
+    def __init__(self, klass):
+        ''' Initiator '''
+        self.klass = klass
+        self.instance = None
+
+    def __call__(self, *args, **kwds):
+        ''' When called as a function return our singleton instance. '''
+        if self.instance is None:
+            self.instance = self.klass(*args, **kwds)
+        return self.instance
 
 
 class SkyxObjectNotFoundError(Exception):
@@ -46,11 +63,11 @@ class SkyxTypeError(Exception):
         ''' returns the error string '''
         return repr(self.value)
     
-
+@Singleton
 class SkyXConnection(object):
     ''' Class to handle connections to TheSkyX
     '''
-    def __init__(self, host="192.168.1.123", port=3040):
+    def __init__(self, host="localhost", port=3040):
         ''' define host and port for TheSkyX.
         '''
         self.host = host
@@ -84,69 +101,11 @@ class SkyXConnection(object):
             return True
         else:
             raise SkyxObjectNotFoundError(target)
-
-    def sky6RASCOMTeleConnect(self):
-        ''' Connect to the telescope
-        '''
-        command = """
-                  var Out;
-                  sky6RASCOMTele.Connect();
-                  Out = sky6RASCOMTele.IsConnected"""
-        output = self._send(command).splitlines()
-        if int(output[0]) != 1:
-            raise SkyxTypeError("Telescope not connected. "+\
-                                "sky6RASCOMTele.IsConnected=" + output[0])
-        return True
-        
-    def sky6RASCOMTeleDisconnect(self):
-        ''' Disconnect the telescope
-            Whatever this actually does...
-        '''
-        command = """
-                  var Out;
-                  sky6RASCOMTele.Disconnect();
-                  Out = sky6RASCOMTele.IsConnected"""
-        output = self._send(command).splitlines()
-        if int(output[0]) != 0:
-            raise SkyxTypeError("Telescope still connected. " +\
-                                "sky6RASCOMTele.IsConnected=" + output[0])
-        return True
-                
-    def ccdsoftCameraConnect(self, async=0):
-        ''' Connect to the camera defined in the TheSkyX profile
-      
-            Returns True on success or throws a SkyxTypeError
-        '''
-        command = """
-                    var Imager = ccdsoftCamera;
-                    var Out = "";
-                    Imager.Connect();
-                    Imager.Asynchronous = """ + str(async) + """;
-                    Out = Imager.Status;
-                    """
-        output = self._send(command).splitlines()
-        if "Ready" not in output[0]:
-            raise SkyxTypeError(output[0])
-        return True
-
-    def ccdsoftCameraDisconnect(self):
-        ''' Disconnect the camera
-        
-            Returns True on success or throws a SkyxTypeError
-        '''
-        command = """
-                    var Imager = ccdsoftCamera;
-                    var Out = "";
-                    Imager.Disconnect();
-                    Out = Imager.Status;
-                  """
-        output = self._send(command).splitlines()
-        if "Not Connected" not in output[0]:
-            raise SkyxTypeError(output[0])
-        return True
                                     
     def closedloopslew(self, target=None):
         ''' Perform a closed loop slew.
+            You really need to have the Automated ImageLink Settings set up
+            right for this to work.
             UNTESTED
         '''
         if target != None:
@@ -155,6 +114,8 @@ class SkyXConnection(object):
             var nErr=0;
             ccdsoftCamera.Connect();
             ccdsoftCamera.AutoSaveOn = 1;
+            ImageLink.unknownScale = 1;
+            ClosedLoopSlew.Asynchronous = 1;
             ClosedLoopSlew.exec();
             nErr = ClosedLoopSlew.exec();
             '''
@@ -190,18 +151,35 @@ class SkyXConnection(object):
         Main();
         """
 
+
+class TheSkyXAction(object):
+    ''' Class to implement the TheSkyXAction script class
+    '''
+    def __init__(self, host="localhost", port=3040):
+        ''' Define connection
+        '''
+        self.conn = SkyXConnection(host, port)
+        
     def TheSkyXAction(self, action):
         ''' The TheSkyXAction object allows a script to invoke a subset of
             commands listed under Preferences, Toolbars, Customize.
         '''
         command = "TheSkyXAction.execute(\"" + action + "\")"
-        oput = self._send(command)
+        oput = self.conn._send(command)
         if oput == "undefined":
             return True
         else:
             raise SkyxObjectNotFoundError(oput)
 
-    def Sk6ObjectInformationProperty(self, prop):
+class sky6ObjectInformation(object):
+    ''' Class to implement the sky6ObjectInformation script class
+    '''
+    def __init__(self, host="localhost", port=3040):
+        ''' Define connection
+        '''
+        self.conn = SkyXConnection(host, port)
+        
+    def property(self, prop):
         ''' Returns a value for the desired Sk6ObjectInformationProperty
             argument.
         '''
@@ -209,13 +187,13 @@ class SkyXConnection(object):
                 var Out = "";
                 sky6ObjectInformation.Property(""" + str(prop) + """);
                 Out = String(sky6ObjectInformation.ObjInfoPropOut);"""
-        oput = self._send(command)
+        oput = self.conn._send(command)
         return oput
 
-    def Sk6ObjectInformationPropertyApplies(self, prop):
+    def PropertyApplies(self, prop):
         pass
 
-    def Sk6ObjectInformationPropertyName(self, prop):
+    def PropertyName(self, prop):
         pass
 
 
@@ -262,7 +240,7 @@ class SkyXConnection(object):
                 }
                 """
         results = {}
-        oput = self._send(command)
+        oput = self.conn._send(command)
         for line in oput.splitlines():
             if "Object not found" in line:
                 raise SkyxObjectNotFoundError("Object not found.")
@@ -271,3 +249,144 @@ class SkyXConnection(object):
                 val = line.split(":")[1]
                 results[info] = val
         return results
+
+
+class ccdsoftCamera(object):
+    ''' Class to implement the ccdsoftCamera script class
+    '''
+    def __init__(self, host="localhost", port=3040):
+        ''' Define connection
+        '''
+        self.conn = SkyXConnection(host, port)
+        self.frames = {1:"Light", 2:"Bias", 3:"Dark", 4:"Flat Field"}
+        
+    def Connect(self, async=0):
+        ''' Connect to the camera defined in the TheSkyX profile
+      
+            Returns True on success or throws a SkyxTypeError
+        '''
+        command = """
+                    var Imager = ccdsoftCamera;
+                    var Out = "";
+                    Imager.Connect();
+                    Imager.Asynchronous = """ + str(async) + """;
+                    Out = Imager.Status;
+                    """
+        output = self.conn._send(command).splitlines()
+        if "Ready" not in output[0]:
+            raise SkyxTypeError(output[0])
+        return True
+
+    def Disconnect(self):
+        ''' Disconnect the camera
+            Returns True on success or throws a SkyxTypeError
+        '''
+        command = """
+                    var Imager = ccdsoftCamera;
+                    var Out = "";
+                    Imager.Disconnect();
+                    Out = Imager.Status;
+                  """
+        output = self.conn._send(command).splitlines()
+        if "Not Connected" not in output[0]:
+            raise SkyxTypeError(output[0])
+        return True
+    
+    def ExposureTime(self, exptime=None):
+        ''' Set the exposure time to the given argument or return the 
+            current exposure time.
+        '''
+        if exptime == None:
+            command = "ccdsoftCamera.ExposureTime"
+            return(self.conn._send(command).splitlines()[0])
+
+        command = "ccdsoftCamera.ExposureTime = " + str(exptime) + ";"
+        output = self.conn._send(command).splitlines()
+        if output[0] != str(exptime):
+            raise SkyxTypeError(output[0])
+        return(output[0])
+    
+    def Bin(self, binning=None):
+        ''' Set the binning or return the current binning
+        
+            We assume NxN binning so just set/get BinX
+        '''
+        if binning == None:
+            command = "ccdsoftCamera.BinX"
+            return(self.conn._send(command).splitlines()[0])
+        command = "ccdsoftCamera.BinX = " + str(binning) + ";"
+        output = self.conn._send(command).splitlines()
+        if output[0] != str(binning):
+            raise SkyxTypeError(output[0])
+        return(output[0])
+            
+    def Frame(self, frame=None):
+        ''' Set the Frame type or return the current type
+
+            Be careful setting 'Dark' as the frame as this will open
+            a dialog on screen.
+        '''
+        if frame == None:
+            command = "ccdsoftCamera.Frame"
+            itype = self.conn._send(command).splitlines()[0]
+            return(self.frames[int(itype)])
+        try:
+            frameid = [x for x in self.frames if self.frames[x] == frame][0]
+        except:
+            raise SkyxTypeError("Unknown Frame type. Must be one of: " +
+                                str(self.frames))
+        command = "ccdsoftCamera.Frame = " + str(frameid) + ";"
+        output = self.conn._send(command).splitlines()
+        if output[0] != str(frameid):
+            raise SkyxTypeError(output[0])
+        return(frame)
+                               
+    def Series(self, num=None):
+        ''' Set the number of images in a series to num or return the
+            current number.
+        '''
+        #TODO
+        pass
+    
+    def TakeImage(self):
+        ''' Takes an image.
+        '''
+        #TODO
+        pass
+
+
+class sky6RASCOMTele(object):
+    ''' Class to implement the ccdsoftCamera script class
+    '''
+    def __init__(self, host="localhost", port=3040):
+        ''' Define connection
+        '''
+        self.conn = SkyXConnection(host, port)
+        
+    def Connect(self):
+        ''' Connect to the telescope
+        '''
+        command = """
+                  var Out;
+                  sky6RASCOMTele.Connect();
+                  Out = sky6RASCOMTele.IsConnected"""
+        output = self.conn._send(command).splitlines()
+        if int(output[0]) != 1:
+            raise SkyxTypeError("Telescope not connected. "+\
+                                "sky6RASCOMTele.IsConnected=" + output[0])
+        return True
+        
+    def Disconnect(self):
+        ''' Disconnect the telescope
+            Whatever this actually does...
+        '''
+        command = """
+                  var Out;
+                  sky6RASCOMTele.Disconnect();
+                  Out = sky6RASCOMTele.IsConnected"""
+        output = self.conn._send(command).splitlines()
+        if int(output[0]) != 0:
+            raise SkyxTypeError("Telescope still connected. " +\
+                                "sky6RASCOMTele.IsConnected=" + output[0])
+        return True
+                
