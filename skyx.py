@@ -7,6 +7,7 @@ SkyXConnection._send().
 from __future__ import print_function
 
 import logging
+import time
 from socket import socket, AF_INET, SOCK_STREAM, SHUT_RDWR, error
 
 
@@ -72,7 +73,12 @@ class SkyXConnection(object):
         '''
         self.host = host
         self.port = port
-
+        
+    def reconfigure(self,host="localhost", port=3040):
+        ''' If we need to chane ip we can do so this way'''
+        self.host = host
+        self.port = port
+                
     def _send(self, command):
         ''' sends a js script to TheSkyX and returns the output.
         '''
@@ -197,6 +203,40 @@ class sky6ObjectInformation(object):
         pass
 
 
+    def currentTargetRaDec2000(self):
+        ''' Attempt to get info on the current target
+        '''
+        
+        command = """
+                var Out = "";
+                var Target56 = 0;
+                var Target57 = 0;
+                sky6ObjectInformation.Property(56);
+                Target56 = sky6ObjectInformation.ObjInfoPropOut;
+                sky6ObjectInformation.Property(57);
+                Target57 = sky6ObjectInformation.ObjInfoPropOut;
+                Out = String(Target56) + " " + String(Target57);
+                  """
+        output = self.conn._send(command).splitlines()[0].split()    
+        return output
+    
+    def currentTargetRaDecNow(self):
+        ''' Attempt to get info on the current target in current epoch
+        '''
+        
+        command = """
+                var Out = "";
+                var Target54 = 0;
+                var Target55 = 0;
+                sky6ObjectInformation.Property(54);
+                Target54 = sky6ObjectInformation.ObjInfoPropOut;
+                sky6ObjectInformation.Property(55);
+                Target55 = sky6ObjectInformation.ObjInfoPropOut;
+                Out = String(Target54) + " " + String(Target55);
+                  """
+        output = self.conn._send(command).splitlines()[0].split()    
+        return output
+                
     def sky6ObjectInformation(self, target):
         ''' Method to return basic SkyX position information on a target.
         '''
@@ -389,4 +429,26 @@ class sky6RASCOMTele(object):
             raise SkyxTypeError("Telescope still connected. " +\
                                 "sky6RASCOMTele.IsConnected=" + output[0])
         return True
-                
+
+    def GetRaDec(self):
+        ''' Get the current RA and Dec
+        '''
+        command = """
+                  var Out;
+                  sky6RASCOMTele.GetRaDec();
+                  Out = String(sky6RASCOMTele.dRa) + " " + String(sky6RASCOMTele.dDec);
+                  """
+        output = self.conn._send(command).splitlines()[0].split()      
+        return output
+    
+    def Sync(self, pos):
+        ''' Sync to a given pos [ra, dec]
+        '''
+        command = """
+                var Out = "";
+                sky6RASCOMTele.Sync(""" + pos[0] + "," + pos[1] + """, "pyskyx");
+                """
+        output = self.conn._send(command).splitlines()
+        print(output)
+        time.sleep(1)
+        print(self.GetRaDec())

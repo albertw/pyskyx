@@ -54,6 +54,18 @@ database. Though ObjectInformation will be sparse for such targets.
 e.g.
 sx.find("7,3")
 
+### Closed loop slew and sync example
+
+```
+obj = skyx.sky6ObjectInformation()
+scope = skyx.sky6RASCOMTele()
+
+con.find("HIP 100044")
+target_pos = obj.currentTargetRaDec(j="now")
+con.closedloopslew()
+scope.sync(target_pos)
+```
+
 ## Running tests
 
 The tests are written for py.test. An optional --host argument can be supplied
