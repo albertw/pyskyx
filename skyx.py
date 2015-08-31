@@ -203,40 +203,36 @@ class sky6ObjectInformation(object):
         pass
 
 
-    def currentTargetRaDec2000(self):
+    def currentTargetRaDec(self, j="now"):
         ''' Attempt to get info on the current target
         '''
-        
-        command = """
-                var Out = "";
-                var Target56 = 0;
-                var Target57 = 0;
-                sky6ObjectInformation.Property(56);
-                Target56 = sky6ObjectInformation.ObjInfoPropOut;
-                sky6ObjectInformation.Property(57);
-                Target57 = sky6ObjectInformation.ObjInfoPropOut;
-                Out = String(Target56) + " " + String(Target57);
-                  """
+        if j == "now":
+            command = """
+                    var Out = "";
+                    var Target54 = 0;
+                    var Target55 = 0;
+                    sky6ObjectInformation.Property(54);
+                    Target54 = sky6ObjectInformation.ObjInfoPropOut;
+                    sky6ObjectInformation.Property(55);
+                    Target55 = sky6ObjectInformation.ObjInfoPropOut;
+                    Out = String(Target54) + " " + String(Target55);
+                      """        
+        elif j == "2000":
+            command = """
+                    var Out = "";
+                    var Target56 = 0;
+                    var Target57 = 0;
+                    sky6ObjectInformation.Property(56);
+                    Target56 = sky6ObjectInformation.ObjInfoPropOut;
+                    sky6ObjectInformation.Property(57);
+                    Target57 = sky6ObjectInformation.ObjInfoPropOut;
+                    Out = String(Target56) + " " + String(Target57);
+                      """
+        else:
+            raise SkyxTypeError("Unknown epoch: " + j)
         output = self.conn._send(command).splitlines()[0].split()    
         return output
     
-    def currentTargetRaDecNow(self):
-        ''' Attempt to get info on the current target in current epoch
-        '''
-        
-        command = """
-                var Out = "";
-                var Target54 = 0;
-                var Target55 = 0;
-                sky6ObjectInformation.Property(54);
-                Target54 = sky6ObjectInformation.ObjInfoPropOut;
-                sky6ObjectInformation.Property(55);
-                Target55 = sky6ObjectInformation.ObjInfoPropOut;
-                Out = String(Target54) + " " + String(Target55);
-                  """
-        output = self.conn._send(command).splitlines()[0].split()    
-        return output
-                
     def sky6ObjectInformation(self, target):
         ''' Method to return basic SkyX position information on a target.
         '''
@@ -443,6 +439,7 @@ class sky6RASCOMTele(object):
     
     def Sync(self, pos):
         ''' Sync to a given pos [ra, dec]
+            ra, dec should be Jnow coordinates
         '''
         command = """
                 var Out = "";
